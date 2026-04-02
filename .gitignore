@@ -21,3 +21,6 @@ publish-standalone/
 # OS
 .DS_Store
 Thumbs.db
+
+# Private docs
+TESTPLAN.md
