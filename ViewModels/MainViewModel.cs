@@ -57,6 +57,7 @@ namespace AppDataCleaner.ViewModels
             IsScanning = true;
             StatusText = "正在扫描...";
             Items.Clear();
+            OnPropertyChanged(nameof(CanClean));
             ProgressValue = 0;
 
             _scanCts = new CancellationTokenSource();
@@ -172,6 +173,8 @@ namespace AppDataCleaner.ViewModels
                     var vm = Items.FirstOrDefault(i => i.Path == item.Path);
                     if (vm != null) Items.Remove(vm);
                 }
+
+                OnPropertyChanged(nameof(CanClean));
 
                 StatusText = $"清理完成！释放了 {FormatBytes(result.TotalFreed)}";
                 MessageBox.Show(

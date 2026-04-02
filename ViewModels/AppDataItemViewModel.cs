@@ -15,8 +15,8 @@ namespace AppDataCleaner.ViewModels
             Children = new ObservableCollection<AppDataItemViewModel>(
                 item.Children.Select(c => new AppDataItemViewModel(c)));
 
-            // 默认勾选Safe项目
-            _isSelected = item.RiskLevel == RiskLevel.Safe;
+            // 默认不勾选任何项目
+            _isSelected = false;
         }
 
         public string Name => _item.Name;
