@@ -72,7 +72,16 @@ namespace AppDataCleaner.ViewModels
 
                 foreach (var result in results)
                 {
-                    Items.Add(new AppDataItemViewModel(result));
+                    var vm = new AppDataItemViewModel(result);
+                    vm.PropertyChanged += (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(AppDataItemViewModel.IsSelected))
+                        {
+                            OnPropertyChanged(nameof(CanClean));
+                            UpdateSelectedSize();
+                        }
+                    };
+                    Items.Add(vm);
                 }
 
                 UpdateTotalSize();
