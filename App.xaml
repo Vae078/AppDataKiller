@@ -1,0 +1,12 @@
+﻿<Application x:Class="AppDataCleaner.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AppDataCleaner"
+             xmlns:conv="clr-namespace:AppDataCleaner.Converters"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <conv:IsNotDangerConverter x:Key="IsNotDangerConverter"/>
+    </Application.Resources>
+</Application>

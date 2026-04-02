@@ -1,0 +1,253 @@
+<Window x:Class="AppDataCleaner.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AppDataCleaner"
+        xmlns:vm="clr-namespace:AppDataCleaner.ViewModels"
+        xmlns:conv="clr-namespace:AppDataCleaner.Converters"
+        mc:Ignorable="d"
+        Title="AppData 清理器" Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#F0F0F0">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <conv:RiskLevelToColorConverter x:Key="RiskLevelToColorConverter"/>
+        <conv:RiskLevelToTextConverter x:Key="RiskLevelToTextConverter"/>
+
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                               CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005FA3"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ActionButton}">
+            <Setter Property="Background" Value="#DC3545"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C82333"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 表头样式 -->
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 行样式 -->
+        <Style x:Key="RowStyle" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="5,8"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <Border Grid.Row="0" Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="AppData 清理器" FontSize="26" FontWeight="Bold" Margin="0,0,0,5" Foreground="#1976D2"/>
+                <TextBlock Text="清理应用程序缓存，释放C盘空间" Foreground="#666666" FontSize="14"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 统计区域 -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="📊 扫描发现: " FontSize="14" VerticalAlignment="Center" Foreground="#555"/>
+                <TextBlock Text="{Binding Items.Count}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="5,0" Foreground="#1976D2"/>
+                <TextBlock Text="个项目，总计 " FontSize="14" VerticalAlignment="Center" Foreground="#555"/>
+                <TextBlock Text="{Binding TotalSizeText}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="5,0" Foreground="#1976D2"/>
+                <TextBlock Text=" | 已选择清理: " FontSize="14" VerticalAlignment="Center" Margin="20,0,0,0" Foreground="#555"/>
+                <TextBlock Text="{Binding SelectedSizeText}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="5,0" Foreground="#4CAF50"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 进度条 -->
+        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,10"
+               Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <TextBlock Text="{Binding StatusText}" Margin="0,0,0,8" FontSize="13" Foreground="#666"/>
+                <ProgressBar Value="{Binding ProgressValue}" Maximum="100" Height="22"
+                            Background="#E0E0E0" Foreground="#4CAF50"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 数据列表 -->
+        <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 表头 - 固定列宽 -->
+                <Grid Grid.Row="0" Background="#F5F5F5" Height="45">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="90"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" BorderBrush="#DDD" BorderThickness="0,0,1,1" Padding="10,0">
+                        <CheckBox VerticalAlignment="Center" HorizontalAlignment="Center" IsEnabled="False"/>
+                    </Border>
+                    <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="0,0,1,1" Padding="10,0">
+                        <TextBlock Text="应用程序 / 路径" Style="{StaticResource HeaderTextStyle}"/>
+                    </Border>
+                    <Border Grid.Column="2" BorderBrush="#DDD" BorderThickness="0,0,1,1" Padding="10,0">
+                        <TextBlock Text="大小" Style="{StaticResource HeaderTextStyle}" HorizontalAlignment="Right"/>
+                    </Border>
+                    <Border Grid.Column="3" BorderBrush="#DDD" BorderThickness="0,0,0,1" Padding="10,0">
+                        <TextBlock Text="安全等级" Style="{StaticResource HeaderTextStyle}" HorizontalAlignment="Center"/>
+                    </Border>
+                </Grid>
+
+                <!-- 数据行 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Items}" VirtualizingPanel.IsVirtualizing="True">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1" Padding="0">
+                                    <Grid Height="40">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="50"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="90"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 勾选框 -->
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                 VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                 IsEnabled="{Binding RiskLevel, Converter={StaticResource IsNotDangerConverter}}"/>
+
+                                        <!-- 应用程序名和路径 -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
+                                                      Foreground="{Binding RiskLevel, Converter={StaticResource RiskLevelToColorConverter}}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding RiskLevel}" Value="Danger">
+                                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                <Setter Property="Opacity" Value="0.5"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Path}" FontSize="11" Foreground="#888"
+                                                      TextTrimming="CharacterEllipsis"
+                                                      ToolTip="{Binding Path}"/>
+                                        </StackPanel>
+
+                                        <!-- 大小 -->
+                                        <TextBlock Grid.Column="2" Text="{Binding FormattedSize}"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0"
+                                                  FontSize="13" FontWeight="SemiBold" Foreground="#333"/>
+
+                                        <!-- 风险等级 -->
+                                        <Border Grid.Column="3" CornerRadius="12" Padding="8,3"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Background="{Binding RiskLevel, Converter={StaticResource RiskLevelToColorConverter}}">
+                                            <Border.Opacity>0.15</Border.Opacity>
+                                            <TextBlock Text="{Binding RiskLevel, Converter={StaticResource RiskLevelToTextConverter}}"
+                                                      Foreground="{Binding RiskLevel, Converter={StaticResource RiskLevelToColorConverter}}"
+                                                      FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- 按钮区域 -->
+        <Border Grid.Row="4" Background="White" CornerRadius="8" Padding="15" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="🔍 开始扫描" Style="{StaticResource ActionButton}"
+                            Command="{Binding ScanCommand}"
+                            IsEnabled="{Binding CanScan}"
+                            Visibility="{Binding IsScanning, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+
+                    <Button Content="⏹ 取消扫描" Style="{StaticResource ActionButton}"
+                            Command="{Binding CancelScanCommand}"
+                            Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <Button Content="全选" Width="80" Height="36" Margin="15,5,5,5"
+                            Command="{Binding SelectAllCommand}"/>
+
+                    <Button Content="取消全选" Width="90" Height="36" Margin="5"
+                            Command="{Binding DeselectAllCommand}"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="{Binding StatusText}"
+                         VerticalAlignment="Center" HorizontalAlignment="Center"
+                         Foreground="#666" FontSize="13"/>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="⏹ 取消清理" Style="{StaticResource ActionButton}"
+                            Command="{Binding CancelCleanCommand}"
+                            Visibility="{Binding IsCleaning, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <Button Content="🗑 清理选中" Style="{StaticResource DangerButton}"
+                            Command="{Binding CleanCommand}"
+                            IsEnabled="{Binding CanClean}"
+                            Visibility="{Binding IsCleaning, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

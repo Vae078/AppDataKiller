@@ -1,0 +1,23 @@
+# Build results
+bin/
+obj/
+publish/
+publish-standalone/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
