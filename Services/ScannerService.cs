@@ -8,9 +8,16 @@ using System.Threading.Tasks;
 
 namespace AppDataCleaner.Services
 {
+    public class ScanProgress
+    {
+        public string Message { get; set; } = string.Empty;
+        public int ProgressPercent { get; set; }
+        public string CurrentItem { get; set; } = string.Empty;
+    }
+
     public interface IScannerService
     {
-        Task<List<AppDataItem>> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+        Task<List<AppDataItem>> ScanAsync(IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default);
     }
 
     public class ScannerService : IScannerService
@@ -27,26 +34,52 @@ namespace AppDataCleaner.Services
             };
         }
 
-        public async Task<List<AppDataItem>> ScanAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+        public async Task<List<AppDataItem>> ScanAsync(IProgress<ScanProgress>? progress, CancellationToken cancellationToken)
         {
             var results = new List<AppDataItem>();
+            int totalPaths = _scanPaths.Count;
+            int currentPathIndex = 0;
 
             foreach (var basePath in _scanPaths)
             {
-                if (!Directory.Exists(basePath)) continue;
+                if (!Directory.Exists(basePath))
+                {
+                    currentPathIndex++;
+                    continue;
+                }
 
-                progress?.Report($"正在扫描: {basePath}");
+                int pathProgressStart = (currentPathIndex * 100) / totalPaths;
+                int pathProgressEnd = ((currentPathIndex + 1) * 100) / totalPaths;
+
+                progress?.Report(new ScanProgress
+                {
+                    Message = $"正在扫描: {Path.GetFileName(basePath)}",
+                    ProgressPercent = pathProgressStart,
+                    CurrentItem = basePath
+                });
 
                 try
                 {
-                    var items = await ScanDirectoryAsync(basePath, progress, cancellationToken);
+                    var items = await ScanDirectoryAsync(basePath, progress, pathProgressStart, pathProgressEnd, cancellationToken);
                     results.AddRange(items);
                 }
                 catch (Exception ex)
                 {
-                    progress?.Report($"扫描失败 {basePath}: {ex.Message}");
+                    progress?.Report(new ScanProgress
+                    {
+                        Message = $"扫描失败 {basePath}: {ex.Message}",
+                        ProgressPercent = pathProgressEnd
+                    });
                 }
+
+                currentPathIndex++;
             }
+
+            progress?.Report(new ScanProgress
+            {
+                Message = $"扫描完成，发现 {results.Count} 个项目",
+                ProgressPercent = 100
+            });
 
             return results
                 .Where(r => r.Size > 0)
@@ -54,7 +87,8 @@ namespace AppDataCleaner.Services
                 .ToList();
         }
 
-        private async Task<List<AppDataItem>> ScanDirectoryAsync(string path, IProgress<string>? progress, CancellationToken cancellationToken)
+        private async Task<List<AppDataItem>> ScanDirectoryAsync(string path, IProgress<ScanProgress>? progress,
+            int progressStart, int progressEnd, CancellationToken cancellationToken)
         {
             var results = new List<AppDataItem>();
 
@@ -65,7 +99,10 @@ namespace AppDataCleaner.Services
                     .Where(SafetyEvaluator.ShouldScanDirectory)
                     .ToArray();
 
-                var tasks = subDirs.Select(async dir =>
+                int totalDirs = subDirs.Length;
+                int processedDirs = 0;
+
+                foreach (var dir in subDirs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
@@ -74,19 +111,29 @@ namespace AppDataCleaner.Services
                         var item = await AnalyzeDirectoryAsync(dir, cancellationToken);
                         if (item.Size > 1024 * 1024) // 只显示 > 1MB
                         {
-                            progress?.Report($"发现: {item.Name} ({item.FormattedSize})");
-                            return item;
+                            results.Add(item);
                         }
+
+                        // 报告进度
+                        processedDirs++;
+                        int currentProgress = progressStart + ((progressEnd - progressStart) * processedDirs / Math.Max(1, totalDirs));
+
+                        progress?.Report(new ScanProgress
+                        {
+                            Message = $"正在分析: {item.Name}",
+                            ProgressPercent = currentProgress,
+                            CurrentItem = item.Name
+                        });
                     }
                     catch (Exception ex)
                     {
-                        progress?.Report($"分析失败 {dir}: {ex.Message}");
+                        progress?.Report(new ScanProgress
+                        {
+                            Message = $"分析失败 {dir}: {ex.Message}",
+                            ProgressPercent = progressStart + ((progressEnd - progressStart) * processedDirs / Math.Max(1, totalDirs))
+                        });
                     }
-                    return null;
-                });
-
-                var items = await Task.WhenAll(tasks);
-                results.AddRange(items.Where(i => i != null)!);
+                }
             }
             catch (UnauthorizedAccessException)
             {

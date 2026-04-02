@@ -63,7 +63,11 @@ namespace AppDataCleaner.ViewModels
 
             try
             {
-                var progress = new Progress<string>(msg => StatusText = msg);
+                var progress = new Progress<ScanProgress>(p =>
+                {
+                    StatusText = p.Message;
+                    ProgressValue = p.ProgressPercent;
+                });
                 var results = await _scanner.ScanAsync(progress, _scanCts.Token);
 
                 foreach (var result in results)
